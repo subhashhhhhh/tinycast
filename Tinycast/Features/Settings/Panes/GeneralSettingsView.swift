@@ -185,6 +185,7 @@ struct GeneralSettingsView: View {
                         Text("Switch the keyboard to this source while the launcher is open.")
                     }
                 }
+                DefaultCurrencyRow()
             } header: {
                 SettingsSectionHeader(.generalGeneral)
             }
@@ -310,3 +311,46 @@ private struct PaletteTransparencyRow: View {
         }
     }
 }
+
+private struct DefaultCurrencyRow: View {
+    @Environment(AppSettings.self) private var settings
+
+    private static let commonCurrencies: [(code: String, name: String)] = [
+        ("INR", "Indian Rupee"),
+        ("USD", "US Dollar"),
+        ("EUR", "Euro"),
+        ("GBP", "British Pound"),
+        ("CAD", "Canadian Dollar"),
+        ("AUD", "Australian Dollar"),
+        ("JPY", "Japanese Yen"),
+        ("CNY", "Chinese Yuan"),
+        ("CHF", "Swiss Franc"),
+        ("SGD", "Singapore Dollar"),
+        ("AED", "UAE Dirham"),
+    ]
+
+    private static let otherCurrencies: [(code: String, name: String)] = {
+        let commonSet = Set(commonCurrencies.map(\.code))
+        return CurrencyData.all.filter { !commonSet.contains($0.code) }
+    }()
+
+    var body: some View {
+        @Bindable var settings = settings
+        let systemRegion = RegionCurrency.code ?? "None"
+        Picker(selection: $settings.defaultCurrency) {
+            Text("System Region (\(systemRegion))").tag(nil as String?)
+            Divider()
+            ForEach(Self.commonCurrencies, id: \.code) { curr in
+                Text("\(curr.code) – \(curr.name)").tag(Optional(curr.code))
+            }
+            Divider()
+            ForEach(Self.otherCurrencies, id: \.code) { curr in
+                Text("\(curr.code) – \(curr.name)").tag(Optional(curr.code))
+            }
+        } label: {
+            SettingsRowTitle(.generalGeneral, "Default Currency")
+            Text("Used for automatic currency conversions in the launcher calculator.")
+        }
+    }
+}
+

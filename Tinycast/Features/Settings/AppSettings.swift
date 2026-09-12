@@ -228,6 +228,17 @@ final class AppSettings {
         }
     }
 
+    /// User's preferred default currency for automatic calculator conversions; nil means system region.
+    var defaultCurrency: String? {
+        didSet {
+            guard let defaultCurrency else {
+                defaults.removeObject(forKey: Key.defaultCurrency.rawValue)
+                return
+            }
+            defaults.set(defaultCurrency, forKey: Key.defaultCurrency.rawValue)
+        }
+    }
+
     /// Lets the panel be dragged by its top edge; off by default, so most launches never grab it.
     var paletteDraggable: Bool {
         didSet { defaults.set(paletteDraggable, forKey: Key.paletteDraggable.rawValue) }
@@ -595,6 +606,7 @@ final class AppSettings {
             defaults.object(forKey: Key.openOnCursorScreen.rawValue) == nil
             || defaults.bool(forKey: Key.openOnCursorScreen.rawValue)
         autoSwitchInputSourceID = defaults.string(forKey: Key.autoSwitchInputSource.rawValue)
+        defaultCurrency = defaults.string(forKey: Key.defaultCurrency.rawValue)
         paletteDraggable = defaults.bool(forKey: Key.paletteDraggable.rawValue)
         // A half-written pair is no position at all, so both coordinates have to be there.
         palettePosition = (defaults.array(forKey: Key.palettePosition.rawValue) as? [Double])

@@ -65,7 +65,8 @@ struct FileSearchScreen: PaletteScreen {
                             onActions: { result in
                                 if let index = rows.firstIndex(of: result) { vm.selection = index }
                                 openActions()
-                            }
+                            },
+                            onDropped: { core.fileSearchCoordinator.fileDropped() }
                         )
                         .frame(width: metrics.size.clipboardListWidth)
 
@@ -89,7 +90,8 @@ struct FileSearchScreen: PaletteScreen {
                         onActions: { result in
                             if let index = rows.firstIndex(of: result) { vm.selection = index }
                             openActions()
-                        }
+                        },
+                        onDropped: { core.fileSearchCoordinator.fileDropped() }
                     )
                 }
             }

@@ -58,7 +58,8 @@ struct LauncherScreen: PaletteScreen {
         if let browser = CommandCatalog.openInBrowser(for: vm.query), visibility.isVisible(browser) {
             results.insert(browser, at: 0)
         }
-        let calc = CalcMemo.evaluate(vm.query, rates: currencyRates.rates)
+        let calc = CalcMemo.evaluate(
+            vm.query, rates: currencyRates.rates, defaultCurrency: core.settings.defaultCurrency)
         // After the calculator: `#FF5733` is never arithmetic, so the two can't both answer.
         let color = calc == nil ? ColorValue.parse(vm.query) : nil
         let fallbacks = core.fallbackCoordinator.entries(for: vm.query)

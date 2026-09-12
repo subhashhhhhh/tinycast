@@ -1,3 +1,4 @@
+import AppKit
 import Darwin
 import SwiftUI
 
@@ -11,6 +12,7 @@ struct FileSearchList: View {
     let onSelect: (FileSearchResult) -> Void
     let onActivate: (FileSearchResult) -> Void
     let onActions: (FileSearchResult) -> Void
+    var onDropped: (() -> Void)? = nil
 
     private var firstRowSelected: Bool {
         selectedID != nil && selectedID == results.first?.id
@@ -31,9 +33,12 @@ struct FileSearchList: View {
                         .selectionFrame(result.id == selectedID)
                         .contentShape(Rectangle())
                         .overlay {
-                            RowClickHandle(
+                            FileDragHandle(
+                                url: result.url,
+                                resultID: result.id,
                                 onSelect: { onSelect(result) },
-                                onActivate: { onActivate(result) })
+                                onActivate: { onActivate(result) },
+                                onDropped: onDropped)
                         }
                         .onRightClick { onActions(result) }
                     }
@@ -125,23 +130,44 @@ private struct FileSearchRow: View {
     }
 }
 
-private struct RowClickHandle: NSViewRepresentable {
+private struct FileDragHandle: NSViewRepresentable {
+    var url: URL
+    var resultID: String
     var onSelect: () -> Void
     var onActivate: () -> Void
+    var onDropped: (() -> Void)?
 
-    func makeNSView(context: Context) -> RowClickView {
-        RowClickView()
+    func makeNSView(context: Context) -> FileDragView {
+        FileDragView()
     }
 
-    func updateNSView(_ nsView: RowClickView, context: Context) {
-        nsView.onSelect = onSelect
-        nsView.onActivate = onActivate
+    func updateNSView(_ nsView: FileDragView, context: Context) {
+        nsView.bind(
+            url: url, resultID: resultID, onSelect: onSelect, onActivate: onActivate,
+            onDropped: onDropped)
     }
 }
 
-private final class RowClickView: NSView {
-    var onSelect: (() -> Void)?
-    var onActivate: (() -> Void)?
+private final class FileDragView: NSView, NSDraggingSource {
+    private static let threshold: CGFloat = 4
+    private static let previewPixel: CGFloat = 64
+
+    private var url: URL?
+    private var resultID: String?
+    private var onSelect: (() -> Void)?
+    private var onActivate: (() -> Void)?
+    private var onDropped: (() -> Void)?
+
+    func bind(
+        url: URL, resultID: String, onSelect: @escaping () -> Void,
+        onActivate: @escaping () -> Void, onDropped: (() -> Void)?
+    ) {
+        self.url = url
+        self.resultID = resultID
+        self.onSelect = onSelect
+        self.onActivate = onActivate
+        self.onDropped = onDropped
+    }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
         switch NSApp.currentEvent?.type {
@@ -151,9 +177,65 @@ private final class RowClickView: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
+        guard let window else { return }
         onSelect?()
         if event.clickCount == 2 {
             onActivate?()
+            return
         }
+
+        let start = NSEvent.mouseLocation
+        var passedThreshold = false
+        window.trackEvents(
+            matching: [.leftMouseDragged, .leftMouseUp], timeout: NSEvent.foreverDuration,
+            mode: .eventTracking
+        ) { tracked, stop in
+            guard let tracked, tracked.type != .leftMouseUp else {
+                stop.pointee = true
+                return
+            }
+            let mouse = NSEvent.mouseLocation
+            guard hypot(mouse.x - start.x, mouse.y - start.y) > Self.threshold else { return }
+            passedThreshold = true
+            stop.pointee = true
+        }
+
+        guard passedThreshold, let url else { return }
+        beginDrag(url: url, with: event)
+    }
+
+    private func beginDrag(url: URL, with event: NSEvent) {
+        let image = dragImage(for: url)
+        let item = NSDraggingItem(pasteboardWriter: url as NSURL)
+        let origin = convert(event.locationInWindow, from: nil)
+        item.setDraggingFrame(
+            NSRect(
+                x: origin.x - image.size.width / 2, y: origin.y - image.size.height / 2,
+                width: image.size.width, height: image.size.height),
+            contents: image)
+        let session = beginDraggingSession(with: [item], event: event, source: self)
+        session.animatesToStartingPositionsOnCancelOrFail = true
+    }
+
+    private func dragImage(for url: URL) -> NSImage {
+        ImageThumbnail.cached(url, maxPixel: Self.previewPixel)
+            ?? FilePreviewThumbnail.cached(url, maxPixel: Self.previewPixel)
+            ?? (resultID.flatMap { IconCache.cachedFitted(forFile: $0) })
+            ?? NSWorkspace.shared.icon(forFile: url.path)
+    }
+
+    // MARK: - NSDraggingSource
+
+    func draggingSession(
+        _ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext
+    ) -> NSDragOperation {
+        .copy
+    }
+
+    func draggingSession(
+        _ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation
+    ) {
+        guard operation != [] else { return }
+        onDropped?()
     }
 }

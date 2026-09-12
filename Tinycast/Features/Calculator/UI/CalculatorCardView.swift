@@ -12,8 +12,10 @@ enum CalcMemo {
 
     private static var cache: Cache?
 
-    static func evaluate(_ query: String, rates: CurrencyRates?) -> CalcResult? {
-        let region = RegionCurrency.code
+    static func evaluate(
+        _ query: String, rates: CurrencyRates?, defaultCurrency: String? = nil
+    ) -> CalcResult? {
+        let region = defaultCurrency ?? RegionCurrency.code
         if let cache, cache.query == query, cache.stamp == rates?.fetchedAt, cache.region == region {
             return cache.result
         }

@@ -57,6 +57,11 @@ final class FileSearchCoordinator {
         session.toggleInfoPanel()
     }
 
+    func fileDropped() {
+        closeQuickLook()
+        paletteCoordinator.hidePalette(restoreFocus: false)
+    }
+
     func open(_ result: FileSearchResult) {
         closeQuickLook()
         paletteCoordinator.hidePalette(restoreFocus: false)

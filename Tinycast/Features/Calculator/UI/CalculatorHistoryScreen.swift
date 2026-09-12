@@ -21,7 +21,10 @@ struct CalculatorHistoryScreen: PaletteScreen {
         }
     }
 
-    private var calc: CalcResult? { CalcMemo.evaluate(vm.query, rates: currencyRates.rates) }
+    private var calc: CalcResult? {
+        CalcMemo.evaluate(
+            vm.query, rates: currencyRates.rates, defaultCurrency: core.settings.defaultCurrency)
+    }
     private var entries: [CalcHistoryEntry] { history.search(vm.query) }
 
     var rows: [Row] {
