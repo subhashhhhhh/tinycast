@@ -43,6 +43,8 @@ struct SettingsBackup: Codable {
         var fileSearchIgnorePatterns: [String]?
         var fileSearchPreviewSize: String?
         var fileSearchShowsInfoPanel: Bool?
+        var fileSearchIncludeContent: Bool?
+        var fileSearchResultLimit: Int?
         var fileSearchDisabledActions: [String]?
         var fileSearchResetTimeout: Int?
         var notesEnabled: Bool?
@@ -143,6 +145,8 @@ extension SettingsBackup {
             fileSearchIgnorePatterns: s.fileSearchIgnorePatterns,
             fileSearchPreviewSize: s.fileSearchPreviewSize.rawValue,
             fileSearchShowsInfoPanel: s.fileSearchShowsInfoPanel,
+            fileSearchIncludeContent: s.fileSearchIncludeContent,
+            fileSearchResultLimit: s.fileSearchResultLimit.rawValue,
             fileSearchDisabledActions: s.fileSearchDisabledActions,
             fileSearchResetTimeout: s.fileSearchResetTimeout.rawValue,
             notesEnabled: s.notesEnabled,
@@ -359,6 +363,14 @@ extension SettingsBackup {
         }
         if let flag = s.fileSearchShowsInfoPanel {
             settings.fileSearchShowsInfoPanel = flag
+            count += 1
+        }
+        if let flag = s.fileSearchIncludeContent {
+            settings.fileSearchIncludeContent = flag
+            count += 1
+        }
+        if let raw = s.fileSearchResultLimit, let limit = FileSearchResultLimit(rawValue: raw) {
+            settings.fileSearchResultLimit = limit
             count += 1
         }
         if let actions = s.fileSearchDisabledActions {

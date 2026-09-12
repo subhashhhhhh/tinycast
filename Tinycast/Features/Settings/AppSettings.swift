@@ -275,6 +275,20 @@ final class AppSettings {
         }
     }
 
+    var fileSearchIncludeContent: Bool {
+        didSet {
+            defaults.set(
+                fileSearchIncludeContent, forKey: Key.fileSearchIncludeContent.rawValue)
+        }
+    }
+
+    var fileSearchResultLimit: FileSearchResultLimit {
+        didSet {
+            defaults.set(
+                fileSearchResultLimit.rawValue, forKey: Key.fileSearchResultLimit.rawValue)
+        }
+    }
+
     var fileSearchDisabledActions: [String] {
         didSet {
             defaults.set(
@@ -598,6 +612,13 @@ final class AppSettings {
         fileSearchShowsInfoPanel =
             defaults.object(forKey: Key.fileSearchShowsInfoPanel.rawValue) == nil
             || defaults.bool(forKey: Key.fileSearchShowsInfoPanel.rawValue)
+        fileSearchIncludeContent =
+            defaults.object(forKey: Key.fileSearchIncludeContent.rawValue) == nil
+            || defaults.bool(forKey: Key.fileSearchIncludeContent.rawValue)
+        fileSearchResultLimit =
+            defaults.object(forKey: Key.fileSearchResultLimit.rawValue)
+            .flatMap { $0 as? Int }
+            .flatMap(FileSearchResultLimit.init(rawValue:)) ?? .twoHundred
         fileSearchDisabledActions =
             defaults.stringArray(forKey: Key.fileSearchDisabledActions.rawValue) ?? []
         fileSearchResetTimeout =

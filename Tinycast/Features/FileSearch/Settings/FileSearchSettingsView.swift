@@ -41,6 +41,18 @@ private struct FileSearchPreviewSection: View {
                 SettingsRowTitle(.fileSearchPreview, "Show Preview Panel")
                 Text("Display file preview and metadata alongside search results.")
             }
+            Toggle(isOn: $settings.fileSearchIncludeContent) {
+                SettingsRowTitle(.fileSearchPreview, "Search File Content & Metadata")
+                Text("Search inside text documents, document titles, image captions, and tags.")
+            }
+            Picker(selection: $settings.fileSearchResultLimit) {
+                ForEach(FileSearchResultLimit.allCases) { limit in
+                    Text(limit.title).tag(limit)
+                }
+            } label: {
+                SettingsRowTitle(.fileSearchPreview, "Maximum search results")
+                Text("Cap on the number of results returned per query.")
+            }
             Picker(selection: $settings.fileSearchPreviewSize) {
                 ForEach(FileSearchPreviewSize.allCases) { size in
                     Text(size.title).tag(size)

@@ -7,14 +7,14 @@ feature is enabled in Settings.
 
 ## Invariants
 
-- **Every Spotlight query is capped at 1,000 candidates before execution, and 200 rows after filtering.**
+- **Every Spotlight query is capped at candidates before execution (1,000 default, scaling up to 5,000 with result limit), and results after filtering (200 default, configurable from 100 to 2,000).**
   `MDQuerySetMaxCount` is the reason the
   feature uses `MDQuery`; `NSMetadataQuery` has no source-result cap and can break the 100 MB budget on
   a broad filename.
 - **Everything under `Model/` stays Foundation-only and pure**, `FileSearchIgnoreList`'s `import Darwin`
   included. `file-search-test` compiles the shipped files together with the existing pure fuzzy scorer.
-- **Search is filename-only and on demand.** An empty query does no work and Tinycast creates no
-  content index, history, query cache, watcher or search data.
+- **Search is on demand.** An empty query does no work and Tinycast creates no private
+  content index, history, query cache, watcher or search data; all searches query the system Spotlight index.
 - **Hidden paths and application-bundle contents are structural, not patterns.** They are what keeps
   the feature permission-free, so no user setting can re-admit them. Everything else that is dropped
   comes from the ignore list.
@@ -37,17 +37,20 @@ feature is enabled in Settings.
 ## Query path
 
 `FileSearchQuery` trims and tokenizes input on whitespace, escapes Spotlight metacharacters, and builds
-one `kMDItemFSName` clause per term. The clauses are joined with AND, so `annual report` requires both
-words in the filename without requiring them to be adjacent or in that order.
+search clauses per term. By default, queries match filename (`kMDItemFSName`), and when deep search is
+enabled (`fileSearchIncludeContent`), each term also queries text content (`kMDItemTextContent`), image captions
+and descriptions (`kMDItemDescription`), keywords/tags (`kMDItemKeywords`), and titles (`kMDItemTitle`, `kMDItemHeadline`).
+The clauses are joined with AND, so `annual report` requires both words without requiring them to be adjacent or in that order.
 
 `FileSearchSession.search` retains the previous rows, debounces for 120 ms, then drives
 `FileSearchService.search` in a detached user-initiated task. One worker serializes synchronous
 Spotlight calls and coalesces changes to the newest pending query, so slower typing cannot accumulate
 overlapping queries. The service resolves the configured roots, then
 keeps the `MDQuery` reference inside one nonisolated synchronous function. Spotlight returns at most
-1,000 candidates. `FileSearchQuery` removes hidden path components and app-bundle contents, applies the
-ignore list, then applies `FuzzyMatch` and publishes at most 200. Localized filename then path order
-makes ties deterministic.
+`candidateLimit` candidates (1,000 to 5,000, scaling with the configured result cap). `FileSearchQuery`
+removes hidden path components and app-bundle contents, applies the ignore list, ranks direct filename
+fuzzy matches ahead of metadata/content matches, and publishes at most `resultLimit` rows (configurable
+from 100 to 2,000, default 200). Localized filename then path order makes ties deterministic.
 
 Visible files and document packages directly under home are matched locally with the same case- and
 diacritic-insensitive all-terms rule, since scoping Spotlight to home itself would pull in `~/Library`.
@@ -139,6 +142,7 @@ query says "No files found", and query creation or execution failure says
 ## Invocation
 
 Settings ▸ File Search owns the `fileSearchEnabled` switch, preview image size (`fileSearchPreviewSize`),
+deep search content & metadata switch (`fileSearchIncludeContent`), maximum results limit (`fileSearchResultLimit`),
 search history retention duration (`fileSearchResetTimeout`), individual ⌘K action visibility toggles,
 along with the scope list, the ignore patterns and the Search Files command row. All of them are
 ordinary settings carried by Tinycast settings backups; importing them grants no permission or

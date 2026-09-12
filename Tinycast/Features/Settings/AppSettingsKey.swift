@@ -29,6 +29,8 @@ enum AppSettingsKey: String, CaseIterable {
     case fileSearchIgnorePatterns = "fileSearchIgnorePatterns"
     case fileSearchPreviewSize = "fileSearchPreviewSize"
     case fileSearchShowsInfoPanel = "fileSearchShowsInfoPanel"
+    case fileSearchIncludeContent = "fileSearchIncludeContent"
+    case fileSearchResultLimit = "fileSearchResultLimit"
     case fileSearchDisabledActions = "fileSearchDisabledActions"
     case fileSearchResetTimeout = "fileSearchResetTimeout"
     case notesEnabled = "notesEnabled"

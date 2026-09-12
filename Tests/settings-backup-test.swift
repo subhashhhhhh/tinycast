@@ -59,6 +59,12 @@ struct SettingsBackupTest {
             "file search shows info panel rides the settings backup",
             mirrored["fileSearchShowsInfoPanel"] == .fileSearchShowsInfoPanel)
         check(
+            "file search include content rides the settings backup",
+            mirrored["fileSearchIncludeContent"] == .fileSearchIncludeContent)
+        check(
+            "file search result limit rides the settings backup",
+            mirrored["fileSearchResultLimit"] == .fileSearchResultLimit)
+        check(
             "file search disabled actions ride the settings backup",
             mirrored["fileSearchDisabledActions"] == .fileSearchDisabledActions)
         check(

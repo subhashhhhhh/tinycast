@@ -51,6 +51,10 @@ struct FileSearchTests {
                 == "kMDItemFSName == \"*report*\"cd && kMDItemFSName != \"*.tmp\"cd"
                 + " && kMDItemFSName != \"*.log\"cd",
             "ignored name globs keep their wildcards and join the expression as exclusions")
+        expect(
+            FileSearchQuery.expression(for: "report", includeContent: true)
+                == "(kMDItemFSName == \"*report*\"cd || kMDItemTextContent == \"*report*\"cd || kMDItemDescription == \"*report*\"cd || kMDItemKeywords == \"*report*\"cd || kMDItemTitle == \"*report*\"cd || kMDItemHeadline == \"*report*\"cd)",
+            "deep search queries text content, image captions, and metadata attributes")
         expect(FileSearchQuery.candidateLimit == 1_000, "the Spotlight candidate cap is fixed")
         expect(FileSearchQuery.resultLimit == 200, "the displayed result cap is fixed")
         expect(
@@ -187,6 +191,13 @@ struct FileSearchTests {
         expect(
             FileSearchScope.expand("~", homeDirectory: home).path == "/Users/test",
             "a bare tilde expands to home itself")
+
+        let deepPolicy = FileSearchPolicy(
+            scopes: ["~"], ignorePatterns: [], homeDirectory: home, includeContent: true,
+            resultLimit: 500)
+        expect(deepPolicy.includeContent, "deep search policy flag is preserved")
+        expect(deepPolicy.resultLimit == 500, "custom result limit is preserved")
+        expect(deepPolicy.candidateLimit == 2_500, "candidate limit scales with result limit")
     }
 
     static func resultModel() {
@@ -225,6 +236,20 @@ struct FileSearchTests {
         expect(
             FileSearchQuery.rank(capped, for: "report", ignoring: shipped).count == 200,
             "ranking publishes no more than the display cap")
+
+        let customCapped = (0..<120).map { result("Archive/Report \($0).txt") }
+        expect(
+            FileSearchQuery.rank(customCapped, for: "report", ignoring: shipped, limit: 100).count
+                == 100,
+            "ranking respects custom limit")
+
+        let filenameMatch = result("Archive/spider-man.png")
+        let metadataMatch = result("Archive/604.png")
+        let rankedContent = FileSearchQuery.rank(
+            [metadataMatch, filenameMatch], for: "spider-man", ignoring: shipped)
+        expect(
+            rankedContent.map(\.name) == ["spider-man.png", "604.png"],
+            "filename matches rank ahead of content/metadata matches")
 
         expect(
             FileSearchQuery.rank(

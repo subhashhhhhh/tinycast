@@ -60,9 +60,13 @@ final class FileSearchSession {
     }
 
     /// Resolved here rather than per search, so glob compilation stays off the keystroke path.
-    func apply(scopes: [String], ignorePatterns: [String]) {
+    func apply(
+        scopes: [String], ignorePatterns: [String], includeContent: Bool = false,
+        resultLimit: Int = 200
+    ) {
         let policy = FileSearchPolicy(
-            scopes: scopes, ignorePatterns: ignorePatterns, homeDirectory: homeDirectory)
+            scopes: scopes, ignorePatterns: ignorePatterns, homeDirectory: homeDirectory,
+            includeContent: includeContent, resultLimit: resultLimit)
         guard policy != self.policy else { return }
         self.policy = policy
         // A result found under the old rules must not publish, and the same query has to re-run.
@@ -127,7 +131,8 @@ final class FileSearchSession {
             pendingSearch = nil
             guard
                 let expression = FileSearchQuery.expression(
-                    for: request.query, excluding: policy.ignore.spotlightNameExclusions)
+                    for: request.query, excluding: policy.ignore.spotlightNameExclusions,
+                    includeContent: policy.includeContent)
             else { continue }
             do {
                 let candidates = try await searchOperation(request.query, expression, policy)

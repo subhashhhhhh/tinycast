@@ -24,14 +24,15 @@ enum FileSearchService {
                     homeDirectory: policy.homeDirectory)
             }
             guard !scopes.isEmpty else {
-                return FileSearchQuery.rank(results, for: rawQuery, ignoring: policy.ignore)
+                return FileSearchQuery.rank(
+                    results, for: rawQuery, ignoring: policy.ignore, limit: policy.resultLimit)
             }
 
             guard let query = MDQueryCreate(nil, expression as CFString, nil, nil) else {
                 throw Failure.couldNotCreateQuery
             }
             MDQuerySetSearchScope(query, scopes as CFArray, 0)
-            MDQuerySetMaxCount(query, FileSearchQuery.candidateLimit)
+            MDQuerySetMaxCount(query, policy.candidateLimit)
             guard MDQueryExecute(query, CFOptionFlags(kMDQuerySynchronous.rawValue)) else {
                 throw Failure.couldNotStartQuery
             }
@@ -55,7 +56,8 @@ enum FileSearchService {
                 guard seen.insert(result.id).inserted else { continue }
                 results.append(result)
             }
-            return FileSearchQuery.rank(results, for: rawQuery, ignoring: policy.ignore)
+            return FileSearchQuery.rank(
+                results, for: rawQuery, ignoring: policy.ignore, limit: policy.resultLimit)
         }
     }
 

@@ -321,6 +321,12 @@ enum SettingsSearchCatalog {
             .fileSearchPreview, "Show Preview Panel",
             keywords: ["preview", "metadata", "panel", "sidebar", "toggle"]),
         .init(
+            .fileSearchPreview, "Search File Content & Metadata",
+            keywords: ["content", "text", "body", "metadata", "caption", "tags", "exif", "iptc"]),
+        .init(
+            .fileSearchPreview, "Maximum search results",
+            keywords: ["limit", "cap", "results", "count", "max"]),
+        .init(
             .fileSearchPreview, "Preview image size",
             keywords: ["thumbnail", "height", "scale", "image", "preview"]),
         .init(

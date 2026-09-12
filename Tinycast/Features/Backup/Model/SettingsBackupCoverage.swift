@@ -27,6 +27,8 @@ enum SettingsBackupCoverage {
         "fileSearchIgnorePatterns": .fileSearchIgnorePatterns,
         "fileSearchPreviewSize": .fileSearchPreviewSize,
         "fileSearchShowsInfoPanel": .fileSearchShowsInfoPanel,
+        "fileSearchIncludeContent": .fileSearchIncludeContent,
+        "fileSearchResultLimit": .fileSearchResultLimit,
         "fileSearchDisabledActions": .fileSearchDisabledActions,
         "fileSearchResetTimeout": .fileSearchResetTimeout,
         "notesEnabled": .notesEnabled,

@@ -8,17 +8,27 @@ enum FileSearchQuery {
         query.split(whereSeparator: \Character.isWhitespace).map(String.init)
     }
 
-    static func expression(for query: String, excluding exclusions: [String] = []) -> String? {
+    static func expression(
+        for query: String, excluding exclusions: [String] = [], includeContent: Bool = false
+    ) -> String? {
         let terms = terms(in: query)
         guard !terms.isEmpty else { return nil }
-        let matches = terms.map { "kMDItemFSName == \"*\(escape($0))*\"cd" }
+        let matches = terms.map { term -> String in
+            let escaped = escape(term)
+            if includeContent {
+                return "(kMDItemFSName == \"*\(escaped)*\"cd || kMDItemTextContent == \"*\(escaped)*\"cd || kMDItemDescription == \"*\(escaped)*\"cd || kMDItemKeywords == \"*\(escaped)*\"cd || kMDItemTitle == \"*\(escaped)*\"cd || kMDItemHeadline == \"*\(escaped)*\"cd)"
+            } else {
+                return "kMDItemFSName == \"*\(escaped)*\"cd"
+            }
+        }
         // Excluding in the predicate keeps ignored files from consuming the candidate cap.
         let excludes = exclusions.map { "kMDItemFSName != \"\(escapeGlob($0))\"cd" }
         return (matches + excludes).joined(separator: " && ")
     }
 
     static func rank(
-        _ results: [FileSearchResult], for query: String, ignoring ignore: FileSearchIgnoreList
+        _ results: [FileSearchResult], for query: String, ignoring ignore: FileSearchIgnoreList,
+        limit: Int = 200
     ) -> [FileSearchResult] {
         let terms = terms(in: query)
         guard !terms.isEmpty else { return [] }
@@ -46,7 +56,7 @@ enum FileSearchQuery {
                 return left.0.id.localizedCaseInsensitiveCompare(right.0.id) == .orderedAscending
             }
         }
-        .prefix(resultLimit)
+        .prefix(limit)
         .map(\.0)
     }
 

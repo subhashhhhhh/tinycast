@@ -30,7 +30,10 @@ final class FileSearchCoordinator {
 
     func applyPolicy() {
         session.apply(
-            scopes: settings.fileSearchScopes, ignorePatterns: settings.fileSearchIgnorePatterns)
+            scopes: settings.fileSearchScopes,
+            ignorePatterns: settings.fileSearchIgnorePatterns,
+            includeContent: settings.fileSearchIncludeContent,
+            resultLimit: settings.fileSearchResultLimit.rawValue)
     }
 
     /// `query` is the fallback row's: the screen opens already narrowed to what was typed.
