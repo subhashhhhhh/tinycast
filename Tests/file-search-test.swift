@@ -52,8 +52,15 @@ struct FileSearchTests {
                 + " && kMDItemFSName != \"*.log\"cd",
             "ignored name globs keep their wildcards and join the expression as exclusions")
         expect(
+            FileSearchQuery.filenameExpression(for: "report") == "kMDItemFSName == \"*report*\"cd",
+            "filename expression queries name substrings")
+        expect(
+            FileSearchQuery.contentExpression(for: "report")
+                == "(kMDItemTextContent == \"report*\"cd || kMDItemDescription == \"report*\"cd || kMDItemKeywords == \"report*\"cd || kMDItemTitle == \"report*\"cd || kMDItemHeadline == \"report*\"cd)",
+            "content expression uses word-prefix matching for Spotlight inverted index")
+        expect(
             FileSearchQuery.expression(for: "report", includeContent: true)
-                == "(kMDItemFSName == \"*report*\"cd || kMDItemTextContent == \"*report*\"cd || kMDItemDescription == \"*report*\"cd || kMDItemKeywords == \"*report*\"cd || kMDItemTitle == \"*report*\"cd || kMDItemHeadline == \"*report*\"cd)",
+                == "(kMDItemFSName == \"*report*\"cd || kMDItemTextContent == \"report*\"cd || kMDItemDescription == \"report*\"cd || kMDItemKeywords == \"report*\"cd || kMDItemTitle == \"report*\"cd || kMDItemHeadline == \"report*\"cd)",
             "deep search queries text content, image captions, and metadata attributes")
         expect(FileSearchQuery.candidateLimit == 1_000, "the Spotlight candidate cap is fixed")
         expect(FileSearchQuery.resultLimit == 200, "the displayed result cap is fixed")

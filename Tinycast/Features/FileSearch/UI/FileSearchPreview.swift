@@ -9,9 +9,22 @@ struct FileSearchPreview: View {
 
     @State private var probe: FileMetadataProbe?
     @State private var thumbnail: NSImage?
+    @State private var textLines: [String]?
 
     private static let imageExtensions: Set<String> = [
         "png", "jpg", "jpeg", "heic", "heif", "webp", "gif", "tiff", "tif", "bmp", "ico"
+    ]
+
+    private static let textExtensions: Set<String> = [
+        "ts", "tsx", "js", "jsx", "mjs", "cjs",
+        "swift", "py", "rb", "rs", "go", "java", "kt", "scala",
+        "c", "h", "cpp", "hpp", "cc", "m", "mm", "cs",
+        "sh", "bash", "zsh", "fish", "bat", "cmd", "ps1",
+        "html", "htm", "css", "scss", "sass", "less",
+        "json", "json5", "yaml", "yml", "toml", "xml", "plist",
+        "md", "markdown", "txt", "log", "csv", "tsv",
+        "sql", "env", "conf", "ini", "cfg", "properties",
+        "dockerfile", "makefile", "cmake", "gradle"
     ]
 
     var body: some View {
@@ -31,6 +44,9 @@ struct FileSearchPreview: View {
             .edgeDissolve()
             .thinScrollbar()
             .task(id: result.id) {
+                thumbnail = nil
+                textLines = nil
+                probe = nil
                 let pixel = max(previewMaxHeight * 2, 240)
                 let ext = result.url.pathExtension.lowercased()
                 if Self.imageExtensions.contains(ext) {
@@ -38,11 +54,19 @@ struct FileSearchPreview: View {
                     if thumbnail == nil {
                         thumbnail = await ImageThumbnail.loadAsync(result.url, maxPixel: pixel)
                     }
-                }
-                if thumbnail == nil {
+                } else if Self.textExtensions.contains(ext) {
+                    textLines = await Task.detached(priority: .userInitiated) {
+                        FileTextPreview.loadLines(url: result.url)
+                    }.value
+                } else {
                     thumbnail = FilePreviewThumbnail.cached(result.url, maxPixel: pixel)
                     if thumbnail == nil {
                         thumbnail = await FilePreviewThumbnail.loadAsync(result.url, maxPixel: pixel)
+                    }
+                    if thumbnail == nil && !result.isDirectory {
+                        textLines = await Task.detached(priority: .userInitiated) {
+                            FileTextPreview.loadLines(url: result.url)
+                        }.value
                     }
                 }
                 probe = await Task.detached(priority: .userInitiated) {
@@ -67,6 +91,8 @@ struct FileSearchPreview: View {
                         RoundedRectangle(cornerRadius: metrics.radius.card, style: .continuous)
                             .strokeBorder(Theme.Colors.cardStroke, lineWidth: 1)
                     )
+            } else if let textLines, !textLines.isEmpty {
+                codePreview(lines: textLines)
             } else {
                 VStack(spacing: metrics.spacing.sm) {
                     Image(systemName: result.isDirectory ? "folder" : "doc")
@@ -82,6 +108,39 @@ struct FileSearchPreview: View {
                 )
             }
         }
+    }
+
+    private func codePreview(lines: [String]) -> some View {
+        HStack(alignment: .top, spacing: metrics.spacing.sm) {
+            VStack(alignment: .trailing, spacing: 3) {
+                ForEach(0..<lines.count, id: \.self) { idx in
+                    Text("\(idx + 1)")
+                        .font(.system(size: 10, weight: .regular, design: .monospaced))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                ForEach(0..<lines.count, id: \.self) { idx in
+                    Text(lines[idx].isEmpty ? " " : lines[idx])
+                        .font(.system(size: 10, weight: .regular, design: .monospaced))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(metrics.spacing.sm)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: previewMaxHeight, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: metrics.radius.card, style: .continuous)
+                .fill(Theme.Colors.controlSurface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: metrics.radius.card, style: .continuous)
+                .strokeBorder(Theme.Colors.cardStroke, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: metrics.radius.card, style: .continuous))
     }
 
     private var previewMaxHeight: CGFloat {
@@ -157,5 +216,22 @@ struct FileSearchPreview: View {
         }
 
         return items
+    }
+}
+
+enum FileTextPreview {
+    private static let maxBytes = 4096
+    private static let maxLines = 14
+
+    nonisolated static func loadLines(url: URL) -> [String]? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        guard let data = try? handle.read(upToCount: maxBytes), !data.isEmpty else { return nil }
+        guard !data.contains(0) else { return nil }
+        guard let text = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .ascii) else {
+            return nil
+        }
+        let lines = text.components(separatedBy: .newlines)
+        return Array(lines.prefix(maxLines))
     }
 }

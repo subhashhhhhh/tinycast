@@ -43,7 +43,7 @@ private struct FileSearchPreviewSection: View {
             }
             Toggle(isOn: $settings.fileSearchIncludeContent) {
                 SettingsRowTitle(.fileSearchPreview, "Search File Content & Metadata")
-                Text("Search inside text documents, document titles, image captions, and tags.")
+                Text("Search inside text documents, document titles, image captions, and tags. When disabled, file search matches filenames only.")
             }
             Picker(selection: $settings.fileSearchResultLimit) {
                 ForEach(FileSearchResultLimit.allCases) { limit in

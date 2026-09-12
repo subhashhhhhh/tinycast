@@ -37,15 +37,17 @@ feature is enabled in Settings.
 ## Query path
 
 `FileSearchQuery` trims and tokenizes input on whitespace, escapes Spotlight metacharacters, and builds
-search clauses per term. By default, queries match filename (`kMDItemFSName`), and when deep search is
+search clauses per term. Queries match filenames via substring (`kMDItemFSName == "*term*"`), and when deep search is
 enabled (`fileSearchIncludeContent`), each term also queries text content (`kMDItemTextContent`), image captions
-and descriptions (`kMDItemDescription`), keywords/tags (`kMDItemKeywords`), and titles (`kMDItemTitle`, `kMDItemHeadline`).
+and descriptions (`kMDItemDescription`), keywords/tags (`kMDItemKeywords`), and titles (`kMDItemTitle`, `kMDItemHeadline`)
+using word-prefix matching (`term*`) to utilize Spotlight's fast inverted index.
 The clauses are joined with AND, so `annual report` requires both words without requiring them to be adjacent or in that order.
 
-`FileSearchSession.search` retains the previous rows, debounces for 120 ms, then drives
-`FileSearchService.search` in a detached user-initiated task. One worker serializes synchronous
-Spotlight calls and coalesces changes to the newest pending query, so slower typing cannot accumulate
-overlapping queries. The service resolves the configured roots, then
+`FileSearchSession.search` retains the previous rows, debounces for 40 ms, then drives
+a two-phase search in a detached user-initiated task: Phase 1 executes the fast filename query and publishes
+matching results immediately (~15–20 ms), while Phase 2 executes the deep content and metadata query in the background,
+merging and ranking additional matches without stalling keystrokes. One worker serializes Spotlight calls
+and coalesces changes to the newest pending query, skipping Phase 2 when superseded by newer keystrokes.
 keeps the `MDQuery` reference inside one nonisolated synchronous function. Spotlight returns at most
 `candidateLimit` candidates (1,000 to 5,000, scaling with the configured result cap). `FileSearchQuery`
 removes hidden path components and app-bundle contents, applies the ignore list, ranks direct filename

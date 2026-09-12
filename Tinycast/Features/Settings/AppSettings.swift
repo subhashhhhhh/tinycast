@@ -625,8 +625,7 @@ final class AppSettings {
             defaults.object(forKey: Key.fileSearchShowsInfoPanel.rawValue) == nil
             || defaults.bool(forKey: Key.fileSearchShowsInfoPanel.rawValue)
         fileSearchIncludeContent =
-            defaults.object(forKey: Key.fileSearchIncludeContent.rawValue) == nil
-            || defaults.bool(forKey: Key.fileSearchIncludeContent.rawValue)
+            defaults.bool(forKey: Key.fileSearchIncludeContent.rawValue)
         fileSearchResultLimit =
             defaults.object(forKey: Key.fileSearchResultLimit.rawValue)
             .flatMap { $0 as? Int }

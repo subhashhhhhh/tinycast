@@ -38,15 +38,19 @@ enum FileSearchService {
             }
 
             var seen = Set(results.map(\.id))
+            let attrs = [kMDItemPath, kMDItemFSInvisible, kMDItemContentType] as CFArray
             for index in 0..<MDQueryGetResultCount(query) {
                 guard let rawItem = MDQueryGetResultAtIndex(query, index) else { continue }
                 let item = Unmanaged<MDItem>.fromOpaque(rawItem).takeUnretainedValue()
-                guard let path = MDItemCopyAttribute(item, kMDItemPath) as? String else { continue }
-                let hidden = MDItemCopyAttribute(item, kMDItemFSInvisible) as? Bool ?? false
+                guard let dict = MDItemCopyAttributes(item, attrs) as? [CFString: Any],
+                    let path = dict[kMDItemPath] as? String
+                else { continue }
+                let hidden =
+                    (dict[kMDItemFSInvisible] as? NSNumber)?.boolValue
+                    ?? (dict[kMDItemFSInvisible] as? Bool ?? false)
                 guard !hidden else { continue }
 
-                let contentType = (MDItemCopyAttribute(item, kMDItemContentType) as? String)
-                    .flatMap(UTType.init)
+                let contentType = (dict[kMDItemContentType] as? String).flatMap(UTType.init)
                 guard contentType?.conforms(to: .application) != true else { continue }
 
                 let result = FileSearchResult(
@@ -63,15 +67,13 @@ enum FileSearchService {
 
     private nonisolated static func resolveScopes(
         _ policy: FileSearchPolicy
-    )
-        -> FileSearchScope.Selection
-    {
+    ) -> FileSearchScope.Selection {
         var directories = policy.directRoots
         var rootItems: [FileSearchScope.Candidate] = []
         if policy.includesHome {
-            let selection = discoverScopes(homeDirectory: policy.homeDirectory)
+            let (selection, cloud) = ScopeCache.shared.getSelection(homeDirectory: policy.homeDirectory)
             directories += selection.directories
-            directories += cloudScopes(homeDirectory: policy.homeDirectory)
+            directories += cloud
             rootItems = selection.rootItems
         }
         return FileSearchScope.Selection(
@@ -112,5 +114,34 @@ enum FileSearchService {
     private nonisolated static func deduplicated(_ urls: [URL]) -> [URL] {
         var seen = Set<String>()
         return urls.filter { seen.insert($0.standardizedFileURL.path).inserted }
+    }
+
+    private final class ScopeCache: @unchecked Sendable {
+        static let shared = ScopeCache()
+        private let lock = NSLock()
+        private var cachedHome: URL?
+        private var cachedSelection: FileSearchScope.Selection?
+        private var cachedCloud: [URL]?
+        private var cachedAt: ContinuousClock.Instant?
+        private let ttl: Duration = .seconds(10)
+
+        func getSelection(homeDirectory: URL) -> (FileSearchScope.Selection, [URL]) {
+            lock.lock()
+            defer { lock.unlock() }
+            let now = ContinuousClock.now
+            if let cachedHome, cachedHome == homeDirectory,
+                let cachedSelection, let cachedCloud,
+                let cachedAt, now - cachedAt < ttl
+            {
+                return (cachedSelection, cachedCloud)
+            }
+            let selection = FileSearchService.discoverScopes(homeDirectory: homeDirectory)
+            let cloud = FileSearchService.cloudScopes(homeDirectory: homeDirectory)
+            self.cachedHome = homeDirectory
+            self.cachedSelection = selection
+            self.cachedCloud = cloud
+            self.cachedAt = now
+            return (selection, cloud)
+        }
     }
 }

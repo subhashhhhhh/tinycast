@@ -40,7 +40,7 @@ final class FileSearchSession {
         policy = FileSearchPolicy(
             scopes: FileSearchScope.defaultScopes, ignorePatterns: [],
             homeDirectory: homeDirectory)
-        debounce = .milliseconds(120)
+        debounce = .milliseconds(40)
         searchOperation = { query, expression, policy in
             try await Task.detached(priority: .userInitiated) {
                 try FileSearchService.search(
@@ -130,15 +130,30 @@ final class FileSearchSession {
             guard pendingSearch?.revision == request.revision else { continue }
             pendingSearch = nil
             guard
-                let expression = FileSearchQuery.expression(
-                    for: request.query, excluding: policy.ignore.spotlightNameExclusions,
-                    includeContent: policy.includeContent)
+                let nameExpression = FileSearchQuery.filenameExpression(
+                    for: request.query, excluding: policy.ignore.spotlightNameExclusions)
             else { continue }
             do {
-                let candidates = try await searchOperation(request.query, expression, policy)
+                let nameCandidates = try await searchOperation(request.query, nameExpression, policy)
                 guard revision == request.revision, query == request.query else { continue }
-                results = candidates
+                results = nameCandidates
                 state = .ready
+
+                if policy.includeContent,
+                    pendingSearch == nil,
+                    let contentExpression = FileSearchQuery.contentExpression(
+                        for: request.query, excluding: policy.ignore.spotlightNameExclusions)
+                {
+                    let contentCandidates = try await searchOperation(request.query, contentExpression, policy)
+                    guard revision == request.revision, query == request.query else { continue }
+                    var seen = Set(nameCandidates.map(\.id))
+                    var merged = nameCandidates
+                    for candidate in contentCandidates where seen.insert(candidate.id).inserted {
+                        merged.append(candidate)
+                    }
+                    results = FileSearchQuery.rank(
+                        merged, for: request.query, ignoring: policy.ignore, limit: policy.resultLimit)
+                }
             } catch {
                 guard revision == request.revision, query == request.query else { continue }
                 results = []

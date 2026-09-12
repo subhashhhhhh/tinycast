@@ -8,6 +8,32 @@ enum FileSearchQuery {
         query.split(whereSeparator: \Character.isWhitespace).map(String.init)
     }
 
+    static func filenameExpression(
+        for query: String, excluding exclusions: [String] = []
+    ) -> String? {
+        let terms = terms(in: query)
+        guard !terms.isEmpty else { return nil }
+        let matches = terms.map { term -> String in
+            let escaped = escape(term)
+            return "kMDItemFSName == \"*\(escaped)*\"cd"
+        }
+        let excludes = exclusions.map { "kMDItemFSName != \"\(escapeGlob($0))\"cd" }
+        return (matches + excludes).joined(separator: " && ")
+    }
+
+    static func contentExpression(
+        for query: String, excluding exclusions: [String] = []
+    ) -> String? {
+        let terms = terms(in: query)
+        guard !terms.isEmpty else { return nil }
+        let matches = terms.map { term -> String in
+            let escaped = escape(term)
+            return "(kMDItemTextContent == \"\(escaped)*\"cd || kMDItemDescription == \"\(escaped)*\"cd || kMDItemKeywords == \"\(escaped)*\"cd || kMDItemTitle == \"\(escaped)*\"cd || kMDItemHeadline == \"\(escaped)*\"cd)"
+        }
+        let excludes = exclusions.map { "kMDItemFSName != \"\(escapeGlob($0))\"cd" }
+        return (matches + excludes).joined(separator: " && ")
+    }
+
     static func expression(
         for query: String, excluding exclusions: [String] = [], includeContent: Bool = false
     ) -> String? {
@@ -16,7 +42,7 @@ enum FileSearchQuery {
         let matches = terms.map { term -> String in
             let escaped = escape(term)
             if includeContent {
-                return "(kMDItemFSName == \"*\(escaped)*\"cd || kMDItemTextContent == \"*\(escaped)*\"cd || kMDItemDescription == \"*\(escaped)*\"cd || kMDItemKeywords == \"*\(escaped)*\"cd || kMDItemTitle == \"*\(escaped)*\"cd || kMDItemHeadline == \"*\(escaped)*\"cd)"
+                return "(kMDItemFSName == \"*\(escaped)*\"cd || kMDItemTextContent == \"\(escaped)*\"cd || kMDItemDescription == \"\(escaped)*\"cd || kMDItemKeywords == \"\(escaped)*\"cd || kMDItemTitle == \"\(escaped)*\"cd || kMDItemHeadline == \"\(escaped)*\"cd)"
             } else {
                 return "kMDItemFSName == \"*\(escaped)*\"cd"
             }
