@@ -10,6 +10,10 @@ struct FileSearchPreview: View {
     @State private var probe: FileMetadataProbe?
     @State private var thumbnail: NSImage?
 
+    private static let imageExtensions: Set<String> = [
+        "png", "jpg", "jpeg", "heic", "heif", "webp", "gif", "tiff", "tif", "bmp", "ico"
+    ]
+
     var body: some View {
         if let result {
             ScrollView {
@@ -27,11 +31,19 @@ struct FileSearchPreview: View {
             .edgeDissolve()
             .thinScrollbar()
             .task(id: result.id) {
-                thumbnail = FilePreviewThumbnail.cached(
-                    result.url, maxPixel: metrics.size.clipboardPreviewPixel)
+                let pixel = max(previewMaxHeight * 2, 240)
+                let ext = result.url.pathExtension.lowercased()
+                if Self.imageExtensions.contains(ext) {
+                    thumbnail = ImageThumbnail.cached(result.url, maxPixel: pixel)
+                    if thumbnail == nil {
+                        thumbnail = await ImageThumbnail.loadAsync(result.url, maxPixel: pixel)
+                    }
+                }
                 if thumbnail == nil {
-                    thumbnail = await FilePreviewThumbnail.loadAsync(
-                        result.url, maxPixel: metrics.size.clipboardPreviewPixel)
+                    thumbnail = FilePreviewThumbnail.cached(result.url, maxPixel: pixel)
+                    if thumbnail == nil {
+                        thumbnail = await FilePreviewThumbnail.loadAsync(result.url, maxPixel: pixel)
+                    }
                 }
                 probe = await Task.detached(priority: .userInitiated) {
                     FileMetadataProbe.probe(url: result.url)

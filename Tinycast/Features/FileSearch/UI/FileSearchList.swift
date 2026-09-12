@@ -1,3 +1,4 @@
+import Darwin
 import SwiftUI
 
 struct FileSearchList: View {
@@ -51,6 +52,8 @@ struct FileSearchList: View {
         .onDisappear {
             IconCache.purgeFitted()
             FilePreviewThumbnail.purgePreviews()
+            ImageThumbnail.purgePreviews()
+            malloc_zone_pressure_relief(nil, 0)
         }
     }
 }

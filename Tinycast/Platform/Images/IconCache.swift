@@ -328,7 +328,20 @@ enum IconCache {
     private static func fileKey(_ path: String, _ stamp: Int) -> NSString {
         key("file:\(stamp):\(path)")
     }
-    private static func fittedKey(_ path: String) -> NSString { key("fit:" + path) }
+    private static func fittedKey(_ path: String) -> NSString {
+        if path.hasSuffix(".app") {
+            return key("fit:app:" + path)
+        }
+        let ext = (path as NSString).pathExtension.lowercased()
+        if !ext.isEmpty {
+            return key("fit:ext:" + ext)
+        }
+        var isDir: ObjCBool = false
+        if FileManager.default.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue {
+            return key("fit:dir")
+        }
+        return key("fit:" + path)
+    }
 
     private static func fittedIcon(forFile path: String) -> Decoded {
         let (icon, cost) = fittedToArtwork(NSWorkspace.shared.icon(forFile: path))

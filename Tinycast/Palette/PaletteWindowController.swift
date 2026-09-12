@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import Darwin
 import SwiftUI
 
 @MainActor
@@ -147,6 +148,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         ImageThumbnail.purgePreviews()
         FilePreviewThumbnail.purgePreviews()
         IconCache.purgeFitted()
+        malloc_zone_pressure_relief(nil, 0)
         schedulePopToRoot()
         guard restoreFocus else { return }
         // Our own window first: it is still open, and activating another app would bury it.
